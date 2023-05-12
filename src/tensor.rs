@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::{Add, Deref, Div, Mul, Neg, Sub};
@@ -212,6 +213,50 @@ impl Tensor {
             .get(target.as_ref().into())
             .unwrap()
             .clone()
+    }
+
+    pub fn debug_define(&self) -> impl Debug {
+        fn debug_impl<'s, S: FnMut(&HashMap<&TensorHandle, u32>, &Tensor) -> std::fmt::Result>(
+            tensor: &'s TensorHandle,
+            set: &mut HashMap<&'s TensorHandle, u32>,
+            show: &mut S,
+        ) -> std::fmt::Result {
+            if set.get(&tensor).is_none() {
+                for i in tensor.arguments() {
+                    debug_impl(i.into(), set, show)?;
+                }
+                set.insert(tensor.into(), set.len() as u32 + 1);
+                show(set, tensor)?;
+            }
+            Ok(())
+        }
+        struct DebugDefine(Tensor);
+        impl Debug for DebugDefine {
+            fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+                let mut set: HashMap<&TensorHandle, u32> = HashMap::new();
+                let mut d = |set: &HashMap<&TensorHandle, u32>, item: &Tensor| {
+                    f.write_str("$")?;
+                    let index = *set.get(<&TensorHandle>::from(item)).unwrap();
+                    Display::fmt(&index, f)?;
+                    Debug::fmt(item.shape(), f)?;
+                    f.write_str(" = ")?;
+                    item.operator().fmt(f)?;
+                    f.write_str("{")?;
+                    for (t, i) in item.arguments().iter().enumerate() {
+                        if t != 0 {
+                            f.write_str(", ")?;
+                        }
+                        let index = *set.get(<&TensorHandle>::from(i)).unwrap();
+                        f.write_str("$")?;
+                        Display::fmt(&index, f)?;
+                    }
+                    f.write_str("}\n")?;
+                    Ok(())
+                };
+                debug_impl((&self.0).into(), &mut set, &mut d)
+            }
+        }
+        DebugDefine(self.clone())
     }
 
     pub fn new(
