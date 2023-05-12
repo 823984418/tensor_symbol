@@ -109,6 +109,15 @@ impl CpuContext {
         }
     }
 
+    pub fn input_constant_with<'s, I: IntoIterator<Item = (&'s Tensor, Arc<Vec<f32>>)>>(
+        &mut self,
+        tensor: &Tensor,
+        value: &Tensor,
+        i: I,
+    ) {
+        self.input(tensor, value.compute_with(i).unwrap());
+    }
+
     pub fn get(&self, tensor: &Tensor) -> Option<Result<Arc<Vec<f32>>, ()>> {
         self.catch.get(tensor.into()).cloned()
     }

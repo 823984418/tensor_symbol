@@ -25,24 +25,24 @@ fn mnist_model_build(model: &mut ModelContext, input: &Tensor) -> Tensor {
 
     const M1: usize = 150;
     let fc = model.variable([INPUT, M1]) / M1 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M1]);
+    let layer = layer.matrix_mul(fc).reshape([M1]) + model.variable([M1]) / M1 as f32;
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M1]);
     let layer = standard(&layer);
 
-    const M2: usize = 100;
+    const M2: usize = 50;
     let fc = model.variable([M1, M2]) / M2 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M2]);
+    let layer = layer.matrix_mul(fc).reshape([M2]) + model.variable([M2]) / M2 as f32;
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M2]);
     let layer = standard(&layer);
 
-    const M3: usize = 50;
+    const M3: usize = 20;
     let fc = model.variable([M2, M3]) / M3 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M3]);
+    let layer = layer.matrix_mul(fc).reshape([M3]) + model.variable([M3]) / M3 as f32;
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M3]);
     let layer = standard(&layer);
 
     let fc = model.variable([M3, 10]) * 0.1;
-    let layer = layer.matrix_mul(fc).reshape([10]);
+    let layer = layer.matrix_mul(fc).reshape([10]) + model.variable([10]) * 0.1;
     let layer = layer.apply(Function::ReLU) + layer * 0.01;
 
     layer
@@ -101,6 +101,8 @@ pub fn main() {
     let ref input = Tensor::variable([28, 28]);
     let ref output = mnist_model_build(model, input);
 
+    println!("{:?}", output.debug_define());
+
     const TRAIN_SIZE: usize = 10;
     let ref input_and_output = (0..TRAIN_SIZE)
         .map(|_| (Tensor::variable([28, 28]), Tensor::variable([10])))
@@ -112,34 +114,22 @@ pub fn main() {
 
     let (_, labels) = read_train_labels("data/mnist/train-labels.idx1-ubyte");
     assert_eq!(labels.shape(), [60000, 10]);
-    for i in 0..1 {
+    for i in 0..3 {
         for t in 0..(60000 / TRAIN_SIZE) {
             let mut context = CpuContext::new();
-            let i_o = (0..TRAIN_SIZE)
-                .map(|x| {
-                    // let t = 0;
-                    // let x = 0;
-                    (
-                        context
-                            .compute_as_constant(&data.get([t * TRAIN_SIZE + x]))
-                            .unwrap()
-                            .constant_data()
-                            .unwrap(),
-                        context
-                            .compute_as_constant(&labels.get([t * TRAIN_SIZE + x]))
-                            .unwrap()
-                            .constant_data()
-                            .unwrap(),
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            let mut context = CpuContext::new();
             for i in 0..TRAIN_SIZE {
-                context.input(&input_and_output[i].0, i_o[i].0.clone());
-                context.input(&input_and_output[i].1, i_o[i].1.clone());
+                context.input_constant_with(
+                    &input_and_output[i].0,
+                    &data.get([t * TRAIN_SIZE + i]),
+                    [],
+                );
+                context.input_constant_with(
+                    &input_and_output[i].1,
+                    &labels.get([t * TRAIN_SIZE + i]),
+                    [],
+                );
             }
-            model.optimization(&mut context, loss, 0.99).unwrap();
+            model.optimization(&mut context, loss, 0.5).unwrap();
 
             if t % 1000 == 0 {
                 // println!("{:?}", model);
@@ -148,9 +138,9 @@ pub fn main() {
 
                 let mut context = CpuContext::new();
                 model.load_to(&mut context);
-                context.input(input, i_o[0].0.clone());
+                context.input_constant_with(input, &data.get([t * TRAIN_SIZE]), []);
 
-                println!("{:10.6?}", i_o[0].1.clone());
+                println!("{:10.6?}", labels.get([t * TRAIN_SIZE]).compute().unwrap());
                 println!("{:10.6?}", context.compute(output).unwrap());
             }
         }
@@ -165,7 +155,7 @@ pub fn main() {
     let mut correct = 0;
     for i in 0..test_result.len() {
         let mut context = CpuContext::new();
-        context.input(input, test_data.get([i]).compute().unwrap());
+        context.input_constant_with(input, &test_data.get([i]), []);
         model.load_to(&mut context);
         let out = context.compute(output).unwrap();
         let o = out

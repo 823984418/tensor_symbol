@@ -149,13 +149,13 @@ impl Tensor {
     pub fn compute(&self) -> Result<Arc<Vec<f32>>, ()> {
         self.compute_with([])
     }
-    pub fn compute_with<I: IntoIterator<Item = (Tensor, Arc<Vec<f32>>)>>(
+    pub fn compute_with<'s, I: IntoIterator<Item = (&'s Tensor, Arc<Vec<f32>>)>>(
         &self,
         v: I,
     ) -> Result<Arc<Vec<f32>>, ()> {
         let mut context = CpuContext::new();
         for (var, val) in v {
-            context.input(&var, val);
+            context.input(var, val);
         }
         context.compute(self)
     }
@@ -257,6 +257,15 @@ impl Tensor {
             }
         }
         DebugDefine(self.clone())
+    }
+
+    pub fn extend_loop<F: FnMut(Tensor) -> Tensor>(&self, mut f: F) -> Tensor {
+        let d = self.shape()[0];
+        let mut out = Vec::with_capacity(d);
+        for i in 0..d {
+            out.push(f(self.get([i])));
+        }
+        AddTensor::add(out)
     }
 
     pub fn new(
