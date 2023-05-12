@@ -259,13 +259,22 @@ impl Tensor {
         DebugDefine(self.clone())
     }
 
-    pub fn extend_loop<F: FnMut(Tensor) -> Tensor>(&self, mut f: F) -> Tensor {
+    pub fn for_add<F: FnMut(Tensor) -> Tensor>(&self, mut f: F) -> Tensor {
         let d = self.shape()[0];
         let mut out = Vec::with_capacity(d);
         for i in 0..d {
             out.push(f(self.get([i])));
         }
         AddTensor::add(out)
+    }
+
+    pub fn for_merge<F: FnMut(Tensor) -> Tensor>(&self, mut f: F) -> Tensor {
+        let d = self.shape()[0];
+        let mut out = Vec::with_capacity(d);
+        for i in 0..d {
+            out.push(f(self.get([i])));
+        }
+        MergeTensor::merge(out)
     }
 
     pub fn new(
