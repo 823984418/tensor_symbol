@@ -30,7 +30,11 @@ impl CpuOperator for Function {
             }
             Function::Step => {
                 for i in 0..len {
-                    data.push(if input[i] > 0.0 { 1.0 } else { 0.0 });
+                    data.push(if input[i].is_sign_positive() {
+                        1.0
+                    } else {
+                        0.0
+                    });
                 }
             }
             Function::Abs => {
@@ -90,10 +94,6 @@ impl CpuOperator for Function {
                 } else if x == 0.0 {
                     for _ in 0..len {
                         data.push(0.0);
-                    }
-                } else if x == 0.5 {
-                    for i in 0..len {
-                        data.push(input[i].sqrt());
                     }
                 } else if x == 1.0 {
                     return Ok(input_data.clone());
