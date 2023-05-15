@@ -107,6 +107,11 @@ impl CpuOperator for Function {
                     }
                 }
             }
+            Function::Sigmoid => {
+                for i in 0..len {
+                    data.push(1.0 / ((-input[i]).exp() + 1.0));
+                }
+            }
         }
         assert_eq!(data.len(), len);
         Ok(Arc::new(data))

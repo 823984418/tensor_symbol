@@ -7,6 +7,7 @@ use crate::tensor::Tensor;
 pub mod add_tensor;
 pub mod assign;
 pub mod constant;
+pub mod debug_assign;
 pub mod div_tensor;
 pub mod extend_scale;
 pub mod function;

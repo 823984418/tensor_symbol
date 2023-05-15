@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use rand::distributions::Standard;
+use rand::distributions::Distribution;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use rand_distr::Normal;
 
 use crate::cpu::CpuContext;
 use crate::grad::BackwardGrad;
@@ -27,18 +28,13 @@ impl ModelContext {
     }
 
     pub fn variable<S: AsRef<[usize]>>(&mut self, shape: S) -> Tensor {
-        self.variable_rng(shape, |len| {
-            SmallRng::from_entropy()
-                .sample_iter(Standard)
-                .take(len)
-                .collect()
-        })
+        self.variable_rng(shape, Normal::new(0.0, 0.01).unwrap())
     }
 
-    pub fn variable_rng<S: AsRef<[usize]>, R: FnOnce(usize) -> Vec<f32>>(
+    pub fn variable_rng<S: AsRef<[usize]>, D: Distribution<f32>>(
         &mut self,
         shape: S,
-        rng: R,
+        rng: D,
     ) -> Tensor {
         if self.index < self.variables.len() {
             let var = self.variables[self.index].0.clone();
@@ -48,7 +44,10 @@ impl ModelContext {
         } else {
             let len = data_size(shape.as_ref());
             let var = Tensor::variable(shape);
-            let value = rng(len);
+            let value = SmallRng::from_entropy()
+                .sample_iter(rng)
+                .take(len)
+                .collect::<Vec<_>>();
             assert_eq!(value.len(), len);
             self.variables.push((var.clone(), value));
             self.index += 1;
@@ -84,7 +83,7 @@ impl ModelContext {
         rate: f32,
     ) -> Result<(), ()> {
         let mut back = BackwardGrad::new();
-        back.append(target, Tensor::scale(rate));
+        back.append(target, Tensor::scale(1.0));
         let back = back.result();
         self.load_to(context);
         for (var, val) in &mut self.variables {
@@ -93,7 +92,7 @@ impl ModelContext {
                 let g = context.compute(b)?;
                 let g = g.as_slice();
                 for i in 0..len {
-                    val[i] -= g[i];
+                    val[i] -= g[i] * rate;
                 }
             }
         }

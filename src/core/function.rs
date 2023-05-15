@@ -22,6 +22,7 @@ pub enum Function {
     Add(f32),
     /// 幂函数
     Pow(f32),
+    Sigmoid,
 }
 
 impl Function {
@@ -59,6 +60,7 @@ impl TensorOperator for Function {
                     grad * arg.powf(x - 1.0) * x
                 }
             }
+            Function::Sigmoid => grad * (tensor * (-tensor + 1.0)),
         }
     }
 
@@ -85,6 +87,7 @@ impl TensorOperator for Function {
                     grad * arg.powf(x - 1.0) * x
                 }
             }
+            Function::Sigmoid => grad * (tensor * (-tensor + 1.0)),
         };
         context.append(arg, back);
     }

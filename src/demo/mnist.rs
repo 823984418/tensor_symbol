@@ -10,39 +10,28 @@ use crate::tensor::{data_size, Tensor};
 use crate::tools::idx::IdxFile;
 use crate::variable_inline::VariableInlineContext;
 
-fn standard(t: &Tensor) -> Tensor {
-    let size = data_size(t.shape()) - 1;
-    let mean = SumScale::sum(t.clone()) / (size as f32);
-    let t = t - mean;
-    let std = (SumScale::sum(t.powf(2.0)) / (size as f32)).powf(0.5);
-    t / std
-}
-
 fn mnist_model_build(model: &mut ModelContext, input: &Tensor) -> Tensor {
     const INPUT: usize = 28 * 28;
     assert_eq!(data_size(input.shape()), INPUT);
     let layer = input.reshape([1, INPUT]);
 
     const M1: usize = 150;
-    let fc = model.variable([INPUT, M1]) / M1 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M1]) + model.variable([M1]) / M1 as f32;
+    let fc = model.variable([INPUT, M1]);
+    let layer = layer.matrix_mul(fc).reshape([M1]) + model.variable([M1]);
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M1]);
-    let layer = standard(&layer);
 
     const M2: usize = 50;
-    let fc = model.variable([M1, M2]) / M2 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M2]) + model.variable([M2]) / M2 as f32;
+    let fc = model.variable([M1, M2]);
+    let layer = layer.matrix_mul(fc).reshape([M2]) + model.variable([M2]);
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M2]);
-    let layer = standard(&layer);
 
     const M3: usize = 20;
-    let fc = model.variable([M2, M3]) / M3 as f32;
-    let layer = layer.matrix_mul(fc).reshape([M3]) + model.variable([M3]) / M3 as f32;
+    let fc = model.variable([M2, M3]);
+    let layer = layer.matrix_mul(fc).reshape([M3]) + model.variable([M3]);
     let layer = (layer.apply(Function::ReLU) + layer * 0.01).reshape([1, M3]);
-    let layer = standard(&layer);
 
-    let fc = model.variable([M3, 10]) * 0.1;
-    let layer = layer.matrix_mul(fc).reshape([10]) + model.variable([10]) * 0.1;
+    let fc = model.variable([M3, 10]);
+    let layer = layer.matrix_mul(fc).reshape([10]) + model.variable([10]);
     let layer = layer.apply(Function::ReLU) + layer * 0.01;
 
     layer
@@ -114,7 +103,7 @@ pub fn main() {
 
     let (_, labels) = read_train_labels("data/mnist/train-labels.idx1-ubyte");
     assert_eq!(labels.shape(), [60000, 10]);
-    for i in 0..3 {
+    for i in 0..5 {
         for t in 0..(60000 / TRAIN_SIZE) {
             let mut context = CpuContext::new();
             for i in 0..TRAIN_SIZE {
@@ -129,7 +118,7 @@ pub fn main() {
                     [],
                 );
             }
-            model.optimization(&mut context, loss, 0.5).unwrap();
+            model.optimization(&mut context, loss, 0.1).unwrap();
 
             if t % 1000 == 0 {
                 // println!("{:?}", model);

@@ -16,6 +16,10 @@ features = [
     "small_rng",
 ]
 
+[dependencies.rand_distr]
+version = "0.4.3"
+
+
 [profile.release]
 lto = "fat"
 debug = true
