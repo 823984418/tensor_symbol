@@ -3,7 +3,7 @@ name = "tensor_symbol"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/r+eference/manifest.html
 
 [dependencies]
 
@@ -19,7 +19,19 @@ features = [
 [dependencies.rand_distr]
 version = "0.4.3"
 
+[dependencies.wgpu]
+version = "0.16.0"
+
+[dependencies.tokio]
+version = "1.28.0"
+features = [
+    "full",
+]
+
+[dependencies.typed-arena]
+version = "2.0.2"
 
 [profile.release]
 lto = "fat"
+codegen-units = 1
 debug = true

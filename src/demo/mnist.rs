@@ -103,7 +103,7 @@ pub fn main() {
 
     let (_, labels) = read_train_labels("data/mnist/train-labels.idx1-ubyte");
     assert_eq!(labels.shape(), [60000, 10]);
-    for i in 0..5 {
+    for i in 0..10 {
         for t in 0..(60000 / TRAIN_SIZE) {
             let mut context = CpuContext::new();
             for i in 0..TRAIN_SIZE {
@@ -118,7 +118,7 @@ pub fn main() {
                     [],
                 );
             }
-            model.optimization(&mut context, loss, 0.1).unwrap();
+            model.optimization(&mut context, loss, 0.05).unwrap();
 
             if t % 1000 == 0 {
                 // println!("{:?}", model);

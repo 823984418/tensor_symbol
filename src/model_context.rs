@@ -57,6 +57,7 @@ impl ModelContext {
 
     pub fn set_value(&mut self, var: &Tensor, v: Vec<f32>) -> bool {
         assert_eq!(data_size(var.shape()), v.len());
+        assert!(var.is_variable());
         for (variable, value) in &mut self.variables {
             if variable.same(var) {
                 *value = v;
@@ -72,7 +73,7 @@ impl ModelContext {
 
     pub fn load_to(&self, context: &mut CpuContext) {
         for (var, val) in &self.variables {
-            context.input(var, Arc::new(val.to_vec()));
+            context.input(var, Arc::new(val.clone()));
         }
     }
 
